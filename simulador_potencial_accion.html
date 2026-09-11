@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Potencial de Acción Neuronal</title>
+    <style>
+        :root { --bg-color:#f4f7f6; --panel-bg:#fff; --text-color:#333; --accent-color:#007bff; --threshold-color:#ff4757; --rest-color:#2ed573; --line-color:#2f3542; }
+        body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background-color:var(--bg-color); color:var(--text-color); margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; }
+        .container { background-color:var(--panel-bg); padding:25px; border-radius:12px; box-shadow:0 8px 16px rgba(0,0,0,.1); max-width:800px; width:100%; text-align:center; }
+        h1 { margin-top:0; color:var(--line-color); font-size:1.8rem; }
+        p.description { font-size:.95rem; color:#555; margin-bottom:20px; text-align:justify; }
+        .canvas-container { position:relative; margin:20px 0; border:1px solid #ddd; border-radius:8px; background-color:#fafafa; overflow:hidden; }
+        canvas { display:block; width:100%; height:400px; }
+        .controls { display:flex; flex-direction:column; gap:15px; padding:15px; background-color:#f8f9fa; border-radius:8px; border:1px solid #eee; }
+        .slider-group { display:flex; align-items:center; justify-content:space-between; gap:15px; }
+        label { font-weight:600; min-width:160px; text-align:left; }
+        input[type="range"] { flex-grow:1; cursor:pointer; }
+        .value-display { font-weight:bold; min-width:60px; color:var(--accent-color); }
+        button { background-color:var(--accent-color); color:white; border:none; padding:12px 24px; font-size:1rem; border-radius:6px; cursor:pointer; transition:background-color .3s ease; font-weight:bold; }
+        button:hover { background-color:#0056b3; }
+        .legend { display:flex; justify-content:center; gap:20px; margin-top:10px; font-size:.85rem; }
+        .legend-item { display:flex; align-items:center; gap:5px; }
+        .color-box { width:15px; height:15px; border-radius:3px; }
+    </style>
+</head>
+<body>
+<div class="container">
+<h1>Simulador de Potencial de Acción</h1>
+<p class="description">Esta simulación demuestra cómo responde el potencial de membrana de una neurona a diferentes estímulos eléctricos. Un estímulo negativo causa <strong>hiperpolarización</strong>. Un estímulo positivo pequeño causa una <strong>despolarización infraumbral</strong> que se disipa gradualmente. Si el estímulo es lo suficientemente fuerte para superar el umbral (-55 mV), se desencadena un <strong>potencial de acción (Ley del Todo o Nada)</strong>.</p>
+<div class="canvas-container"><canvas id="neuronCanvas" width="750" height="400"></canvas></div>
+<div class="legend"><div class="legend-item"><div class="color-box" style="background-color:var(--rest-color);"></div> Potencial de Reposo (-70mV)</div><div class="legend-item"><div class="color-box" style="background-color:var(--threshold-color);"></div> Umbral (-55mV)</div><div class="legend-item"><div class="color-box" style="background-color:var(--accent-color);"></div> Potencial de Membrana</div></div>
+<div class="controls"><div class="slider-group"><label for="stimulusSlider">Fuerza del Estímulo (mV):</label><input type="range" id="stimulusSlider" min="-30" max="40" step="1" value="0"><span class="value-display" id="stimulusValue">0 mV</span></div><button id="applyBtn">Aplicar Estímulo</button></div>
+</div>
+<script>
+const canvas=document.getElementById('neuronCanvas'),ctx=canvas.getContext('2d'),slider=document.getElementById('stimulusSlider'),display=document.getElementById('stimulusValue'),applyBtn=document.getElementById('applyBtn');
+const V_REST=-70,V_THRESH=-55,V_PEAK=40,V_HYPER=-80,TIME_TOTAL=50,STIM_TIME=10,Y_MAX=50,Y_MIN=-90; let dataPoints=[];
+function updateSliderValue(){let val=slider.value;display.textContent=(val>0?'+':'')+val+' mV';} slider.addEventListener('input',updateSliderValue);
+function mapX(t){return(t/TIME_TOTAL)*canvas.width;} function mapY(v){return canvas.height-((v-Y_MIN)/(Y_MAX-Y_MIN))*canvas.height;}
+function drawAxesAndGuides(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.beginPath();ctx.strokeStyle='#ccc';ctx.lineWidth=1;ctx.moveTo(0,mapY(0));ctx.lineTo(canvas.width,mapY(0));ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(255,71,87,.6)';ctx.setLineDash([5,5]);ctx.moveTo(0,mapY(V_THRESH));ctx.lineTo(canvas.width,mapY(V_THRESH));ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(46,213,115,.6)';ctx.moveTo(0,mapY(V_REST));ctx.lineTo(canvas.width,mapY(V_REST));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#666';ctx.font='12px sans-serif';ctx.fillText('+40 mV',10,mapY(40)-5);ctx.fillText('0 mV',10,mapY(0)-5);ctx.fillStyle='#ff4757';ctx.fillText('-55 mV (Umbral)',10,mapY(-55)-5);ctx.fillStyle='#2ed573';ctx.fillText('-70 mV (Reposo)',10,mapY(-70)+15);ctx.fillStyle='#666';ctx.fillText('-90 mV',10,mapY(-90)-5);ctx.fillText('Estímulo aplicado',mapX(STIM_TIME)-40,canvas.height-10);ctx.beginPath();ctx.moveTo(mapX(STIM_TIME),canvas.height-25);ctx.lineTo(mapX(STIM_TIME),canvas.height);ctx.strokeStyle='#aaa';ctx.stroke();}
+function drawGraph(){drawAxesAndGuides();if(!dataPoints.length)return;ctx.beginPath();ctx.strokeStyle='#007bff';ctx.lineWidth=3;ctx.lineJoin='round';ctx.moveTo(mapX(dataPoints[0].t),mapY(dataPoints[0].v));for(let i=1;i<dataPoints.length;i++)ctx.lineTo(mapX(dataPoints[i].t),mapY(dataPoints[i].v));ctx.stroke();}
+function potentialAt(t,stim){let v=V_REST;if(t>=STIM_TIME){let s=t-STIM_TIME,jump=V_REST+stim;if(jump>=V_THRESH){if(s<1.5)v=V_REST+((V_PEAK-V_REST)/1.5)*s;else if(s<3.5)v=V_PEAK-((V_PEAK-V_HYPER)/2)* (s-1.5);else if(s<15)v=V_HYPER+(V_REST-V_HYPER)*(1-Math.exp(-(s-3.5)/1.5));else v=V_REST;}else v=V_REST+stim*Math.exp(-s/3);}return v;}
+function simulate(stimulusStrength){dataPoints=[];for(let t=0;t<=TIME_TOTAL;t+=.1)dataPoints.push({t,v:potentialAt(t,stimulusStrength)});drawGraph();}
+applyBtn.addEventListener('click',()=>{let stim=parseFloat(slider.value),full=[];for(let t=0;t<=TIME_TOTAL;t+=.5)full.push({t,v:potentialAt(t,stim)});dataPoints=[];let index=0;function animate(){if(index<full.length){dataPoints.push(full[index]);if(full[index+1]){dataPoints.push(full[index+1]);index++;}index++;drawGraph();requestAnimationFrame(animate);}}applyBtn.disabled=true;slider.disabled=true;animate();setTimeout(()=>{applyBtn.disabled=false;slider.disabled=false;},1500);});
+simulate(0);
+</script>
+</body>
+</html>
