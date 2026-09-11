@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Escala NIHSS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin: 15px 0; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 24px; cursor: pointer; background: #e5e7eb; border-radius: 4px; border: 1px solid #d1d5db; }
+        input[type=range]::-webkit-slider-thumb { height: 32px; width: 32px; border-radius: 4px; background: #3b82f6; cursor: pointer; -webkit-appearance: none; margin-top: -5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 2px solid #2563eb; transition: background 0.15s ease; }
+        input[type=range]::-webkit-slider-thumb:hover { background: #2563eb; }
+        input[type=range]::-webkit-slider-thumb:active { background: #1d4ed8; }
+        input[type=range]::-moz-range-track { width: 100%; height: 24px; cursor: pointer; background: #e5e7eb; border-radius: 4px; border: 1px solid #d1d5db; }
+        input[type=range]::-moz-range-thumb { height: 32px; width: 32px; border-radius: 4px; background: #3b82f6; cursor: pointer; border: 2px solid #2563eb; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .slider-progress { background: linear-gradient(to right, #93c5fd var(--value, 0%), #e5e7eb var(--value, 0%)) !important; }
+        .max-val-2 { max-width: 40%; }
+        .max-val-3 { max-width: 60%; }
+        .max-val-4 { max-width: 100%; }
+        @media (max-width: 640px) { .max-val-2, .max-val-3, .max-val-4 { max-width: 100%; } }
+    </style>
+</head>
+<body class="text-gray-800 antialiased p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-blue-600 text-white p-6 text-center">
+            <h1 class="text-3xl font-bold mb-2">Escala NIHSS</h1>
+            <p class="text-blue-100 text-sm">(National Institute of Health Stroke Scale)</p>
+            <p class="text-sm mt-2 font-light">Evaluación de la severidad del ictus.</p>
+        </div>
+        <div class="p-6 md:p-8 flex flex-col md:flex-row gap-8">
+            <div class="flex-1" id="nihss-form">
+                <p class="mb-6 text-sm text-gray-600 italic">Deslice el control para seleccionar la puntuación correspondiente a cada ítem observado en el paciente.</p>
+                <div id="items-container" class="space-y-8"></div>
+            </div>
+            <div class="w-full md:w-1/3">
+                <div class="sticky top-6 bg-blue-50 border border-blue-100 rounded-lg p-6 shadow-sm">
+                    <h2 class="text-xl font-bold text-blue-800 border-b border-blue-200 pb-2 mb-4">Resultados</h2>
+                    <div class="mb-6 text-center">
+                        <span class="block text-gray-500 text-sm font-semibold uppercase tracking-wider mb-1">Puntuación Total</span>
+                        <div class="text-5xl font-black text-blue-600 drop-shadow-sm" id="total-score">0</div>
+                        <div class="text-sm text-gray-400 mt-1">de 42 puntos posibles</div>
+                    </div>
+                    <div class="bg-white rounded p-4 border border-gray-100 shadow-inner">
+                        <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Interpretación (Severidad)</span>
+                        <div id="interpretation" class="text-lg font-bold text-gray-700">Normal</div>
+                        <div id="interp-desc" class="text-sm text-gray-500 mt-1">Sin déficit neurológico medible.</div>
+                    </div>
+                    <div class="mt-6">
+                        <button onclick="resetCalculator()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded transition duration-150 ease-in-out border border-gray-300">Reiniciar Escala</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+const nihssItems = [
+{ id:'1a', title:'1a. Nivel de Conciencia (LOC)', options:[
+{value:0,label:'Alerta, responde con presteza.'},{value:1,label:'No alerta, pero se despierta con mínima estimulación para obedecer, responder o reaccionar.'},{value:2,label:'No alerta, requiere estimulación repetida o dolorosa para hacer movimientos (no estereotipados).'},{value:3,label:'Responde sólo con reflejos motores o autonómicos, o está totalmente arreactivo, flácido y arrefléxico.'}]},
+{ id:'1b', title:'1b. Preguntas de Conciencia', description:'Preguntar el mes actual y la edad del paciente.', options:[{value:0,label:'Responde ambas preguntas correctamente.'},{value:1,label:'Responde una pregunta correctamente.'},{value:2,label:'No responde ninguna pregunta correctamente.'}]},
+{ id:'1c', title:'1c. Órdenes de Conciencia', description:'Pedir que abra/cierre los ojos y que apriete/suelte la mano no parética.', options:[{value:0,label:'Realiza ambas órdenes correctamente.'},{value:1,label:'Realiza una orden correctamente.'},{value:2,label:'No realiza ninguna orden correctamente.'}]},
+{ id:'2', title:'2. Mirada Conjugada', description:'Solo movimientos oculares horizontales.', options:[{value:0,label:'Normal.'},{value:1,label:'Parálisis parcial de la mirada; mirada conjugada anormal pero sin desviación forzada.'},{value:2,label:'Desviación forzada o parálisis total de la mirada que no se vence con maniobras oculocefálicas.'}]},
+{ id:'3', title:'3. Campos Visuales', description:'Por confrontación.', options:[{value:0,label:'Campos visuales normales.'},{value:1,label:'Hemianopsia parcial.'},{value:2,label:'Hemianopsia completa.'},{value:3,label:'Hemianopsia bilateral (ceguera cortical).'}]},
+{ id:'4', title:'4. Paresia Facial', options:[{value:0,label:'Movimiento normal, simétrico.'},{value:1,label:'Paresia menor (borramiento del surco nasogeniano, asimetría a la sonrisa).'},{value:2,label:'Paresia parcial (parálisis total o casi total de la mitad inferior de la cara).'},{value:3,label:'Parálisis completa de uno o ambos lados (ausencia de movimiento en hemicara superior e inferior).'}]},
+{ id:'5a', title:'5a. Motor Brazo Izquierdo', description:'Mantener a 90° (sentado) o 45° (tumbado) durante 10 segundos.', options:[{value:0,label:'Mantiene posición 10 segundos sin claudicar.'},{value:1,label:'Claudica antes de 10 seg. pero no toca la cama.'},{value:2,label:'Algún esfuerzo contra la gravedad; cae a la cama en menos de 10 seg.'},{value:3,label:'Cae inmediatamente, no hay esfuerzo contra la gravedad, pero se ve algún movimiento.'},{value:4,label:'Ningún movimiento.'}]},
+{ id:'5b', title:'5b. Motor Brazo Derecho', description:'Mantener a 90° (sentado) o 45° (tumbado) durante 10 segundos.', options:[{value:0,label:'Mantiene posición 10 segundos sin claudicar.'},{value:1,label:'Claudica antes de 10 seg. pero no toca la cama.'},{value:2,label:'Algún esfuerzo contra la gravedad; cae a la cama en menos de 10 seg.'},{value:3,label:'Cae inmediatamente, no hay esfuerzo contra la gravedad, pero se ve algún movimiento.'},{value:4,label:'Ningún movimiento.'}]},
+{ id:'6a', title:'6a. Motor Pierna Izquierda', description:'Mantener a 30° (tumbado) durante 5 segundos.', options:[{value:0,label:'Mantiene posición 5 segundos sin claudicar.'},{value:1,label:'Claudica antes de 5 seg. pero no toca la cama.'},{value:2,label:'Algún esfuerzo contra la gravedad; cae a la cama en menos de 5 seg.'},{value:3,label:'Cae inmediatamente, no hay esfuerzo contra la gravedad, pero se ve algún movimiento.'},{value:4,label:'Ningún movimiento.'}]},
+{ id:'6b', title:'6b. Motor Pierna Derecha', description:'Mantener a 30° (tumbado) durante 5 segundos.', options:[{value:0,label:'Mantiene posición 5 segundos sin claudicar.'},{value:1,label:'Claudica antes de 5 seg. pero no toca la cama.'},{value:2,label:'Algún esfuerzo contra la gravedad; cae a la cama en menos de 5 seg.'},{value:3,label:'Cae inmediatamente, no hay esfuerzo contra la gravedad, pero se ve algún movimiento.'},{value:4,label:'Ningún movimiento.'}]},
+{ id:'7', title:'7. Ataxia Apendicular', description:'Prueba dedo-nariz y talón-rodilla.', options:[{value:0,label:'Ausente.'},{value:1,label:'Presente en un miembro.'},{value:2,label:'Presente en dos miembros.'}]},
+{ id:'8', title:'8. Sensibilidad', description:'Estímulo doloroso con alfiler.', options:[{value:0,label:'Normal; no hay pérdida de sensibilidad.'},{value:1,label:'Pérdida leve a moderada; siente que lo tocan pero menos afilado o más obtuso en un lado.'},{value:2,label:'Pérdida severa a total; el paciente no es consciente de que lo tocan.'}]},
+{ id:'9', title:'9. Lenguaje', description:'Describir lámina, nombrar objetos, leer oraciones.', options:[{value:0,label:'Normal; no hay afasia.'},{value:1,label:'Afasia leve a moderada; pérdida de fluidez o comprensión, pero se entiende el mensaje.'},{value:2,label:'Afasia severa; toda la comunicación se realiza mediante expresiones fragmentarias.'},{value:3,label:'Mudo, afasia global; no hay habla útil o comprensión auditiva.'}]},
+{ id:'10', title:'10. Disartria', description:'Leer palabras.', options:[{value:0,label:'Normal.'},{value:1,label:'Leve a moderada; el paciente arrastra algunas palabras y puede ser entendido con dificultad.'},{value:2,label:'Severa; lenguaje ininteligible en ausencia o desproporción con cualquier disfasia, o está mudo.'}]},
+{ id:'11', title:'11. Extinción e Inatención (Negligencia)', options:[{value:0,label:'Normal.'},{value:1,label:'Inatención visual, táctil, espacial o personal de un lado.'},{value:2,label:'Hemiatención profunda o extinción a más de una modalidad. No reconoce su propia mano o el lado del espacio.'}]}
+];
+let scores={};
+function initApp(){const c=document.getElementById('items-container'); nihssItems.forEach(item=>{scores[item.id]=0; const maxVal=item.options.length-1; let lengthClass='max-val-4'; if(maxVal===2)lengthClass='max-val-2'; if(maxVal===3)lengthClass='max-val-3'; const d=document.createElement('div'); d.className='bg-white border border-gray-200 rounded-lg p-5 shadow-sm transition-shadow hover:shadow-md'; d.innerHTML=`<div class="flex justify-between items-start mb-2"><h3 class="font-bold text-lg text-gray-800">${item.title}</h3><span class="bg-blue-100 text-blue-800 text-lg font-bold px-3 py-1 rounded shadow-sm" id="score-display-${item.id}">0</span></div>${item.description?`<p class="text-sm text-gray-500 mb-4">${item.description}</p>`:''}<div class="mt-4"><input type="range" id="slider-${item.id}" min="0" max="${maxVal}" value="0" step="1" class="slider-progress w-full ${lengthClass}" oninput="updateScore('${item.id}', this.value, ${maxVal})"><div class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700 min-h-[60px] flex items-center" id="desc-${item.id}">${item.options[0].label}</div></div>`; c.appendChild(d); updateSliderBackground(document.getElementById(`slider-${item.id}`),0,maxVal);}); calculateTotal();}
+function updateScore(itemId,value,maxVal){const val=parseInt(value); scores[itemId]=val; document.getElementById(`score-display-${itemId}`).innerText=val; const itemDef=nihssItems.find(i=>i.id===itemId); document.getElementById(`desc-${itemId}`).innerText=itemDef.options[val].label; updateSliderBackground(document.getElementById(`slider-${itemId}`),val,maxVal); calculateTotal();}
+function updateSliderBackground(slider,value,maxVal){const percentage=(value/maxVal)*100; slider.style.setProperty('--value',`${percentage}%`);}
+function calculateTotal(){let total=0; for(const key in scores) total+=scores[key]; const totalEl=document.getElementById('total-score'); totalEl.innerText=total; totalEl.classList.remove('scale-110','text-blue-700'); void totalEl.offsetWidth; totalEl.classList.add('scale-110','text-blue-700','transition-transform','duration-200'); setTimeout(()=>totalEl.classList.remove('scale-110','text-blue-700'),200); updateInterpretation(total);}
+function updateInterpretation(total){const intEl=document.getElementById('interpretation'); const descEl=document.getElementById('interp-desc'); let severity='',colorClass='',description=''; if(total===0){severity='Normal';colorClass='text-green-600';description='Sin déficit neurológico medible.';} else if(total>=1&&total<=4){severity='Ictus Leve';colorClass='text-yellow-600';description='Déficit neurológico menor.';} else if(total>=5&&total<=15){severity='Ictus Moderado';colorClass='text-orange-500';description='Déficit neurológico moderado.';} else if(total>=16&&total<=20){severity='Ictus Moderado-Severo';colorClass='text-red-500';description='Alta probabilidad de muerte o dependencia severa.';} else if(total>=21&&total<=42){severity='Ictus Severo';colorClass='text-red-700 font-black';description='Déficit severo. Pronóstico reservado.';} intEl.innerText=severity; intEl.className=`text-lg font-bold ${colorClass}`; descEl.innerText=description;}
+function resetCalculator(){nihssItems.forEach(item=>{const slider=document.getElementById(`slider-${item.id}`); const maxVal=item.options.length-1; slider.value=0; updateSliderBackground(slider,0,maxVal); scores[item.id]=0; document.getElementById(`score-display-${item.id}`).innerText=0; document.getElementById(`desc-${item.id}`).innerText=item.options[0].label;}); calculateTotal(); window.scrollTo({top:0,behavior:'smooth'});}
+document.addEventListener('DOMContentLoaded',initApp);
+</script>
+</body>
+</html>
