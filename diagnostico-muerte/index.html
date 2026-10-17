@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador - Reflejo Oculocefálico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .interactive-area {
+            touch-action: none;
+            user-select: none;
+        }
+
+        /* Transiciones suaves para los elementos del SVG */
+        #face-features, #nose-group, #left-ear, #right-ear, .pupil-group {
+            transition: transform 0.1s ease-out;
+        }
+
+        /* Estilos de los radio buttons personalizados */
+        .radio-custom:checked + label {
+            background-color: #eff6ff;
+            border-color: #93c5fd;
+        }
+        
+        .radio-custom:checked + label .radio-circle {
+            border-color: #3b82f6;
+        }
+        
+        .radio-custom:checked + label .radio-circle::after {
+            content: '';
+            display: block;
+            width: 10px;
+            height: 10px;
+            background-color: #3b82f6;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Estilos del slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen p-4 md:p-8 flex justify-center items-start">
+
+    <div class="max-w-3xl w-full space-y-6">
+        
+        <!-- Cabecera -->
+        <div class="flex items-center space-x-3 mb-2">
+            <div class="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Reflejo Oculocefálico ("Ojos de Muñeca")</h1>
+        </div>
+
+        <p class="text-gray-600 leading-relaxed">
+            Evalúa los pares craneales III, VI y VIII, y las vías de conexión en el tronco encefálico. Utilice el deslizador inferior para girar la cabeza de lado a lado (no evalúe si hay sospecha de trauma cervical).
+        </p>
+
+        <!-- Controles de Estado Clínico -->
+        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Estado Clínico</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Opción 1: Presente -->
+                <div class="relative">
+                    <input type="radio" id="state-presente" name="clinical-state" value="presente" class="radio-custom sr-only" checked>
+                    <label for="state-presente" class="flex flex-col h-full p-4 border border-gray-200 rounded-lg cursor-pointer transition-colors hover:bg-gray-50">
+                        <div class="flex items-center mb-2">
+                            <div class="radio-circle w-5 h-5 border-2 border-gray-300 rounded-full flex-shrink-0 relative mr-3"></div>
+                            <span class="block text-gray-900 font-medium">Reflejo Presente (Normal)</span>
+                        </div>
+                        <span class="block text-gray-500 text-sm pl-8">Los ojos se mueven en dirección opuesta al giro de la cabeza para mantener la mirada fija al frente. Tronco encefálico intacto.</span>
+                    </label>
+                </div>
+
+                <!-- Opción 2: Ausente -->
+                <div class="relative">
+                    <input type="radio" id="state-ausente" name="clinical-state" value="ausente" class="radio-custom sr-only">
+                    <label for="state-ausente" class="flex flex-col h-full p-4 border border-gray-200 rounded-lg cursor-pointer transition-colors hover:bg-gray-50">
+                        <div class="flex items-center mb-2">
+                            <div class="radio-circle w-5 h-5 border-2 border-gray-300 rounded-full flex-shrink-0 relative mr-3"></div>
+                            <span class="block text-gray-900 font-medium">Reflejo Ausente (MCN)</span>
+                        </div>
+                        <span class="block text-gray-500 text-sm pl-8">Los ojos permanecen fijos en las órbitas y se mueven junto con la cabeza (ojos de muñeca). Hallazgo compatible con Muerte Encefálica.</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulador Gráfico -->
+        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            
+            <!-- Contenedor del Gráfico -->
+            <div class="w-full bg-slate-50 rounded-lg border border-slate-200 h-64 sm:h-80 flex flex-col justify-end items-center overflow-hidden relative mb-6">
+                
+                <svg viewBox="0 0 200 200" id="patient-svg" class="w-full max-w-[300px] h-full object-contain object-bottom pointer-events-none">
+                    
+                    <defs>
+                        <!-- Formas de los ojos para reutilizarlas en el fondo y en el clip-path -->
+                        <path id="left-eye-shape" d="M70,85 Q80,75 90,85 Q80,95 70,85 Z" />
+                        <path id="right-eye-shape" d="M110,85 Q120,75 130,85 Q120,95 110,85 Z" />
+                        
+                        <clipPath id="left-eye-clip">
+                            <use href="#left-eye-shape" />
+                        </clipPath>
+                        
+                        <clipPath id="right-eye-clip">
+                            <use href="#right-eye-shape" />
+                        </clipPath>
+                    </defs>
+
+                    <!-- Torso y Cuello (Estáticos) -->
+                    <g id="torso" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2">
+                        <path d="M50,200 C50,150 70,140 100,140 C130,140 150,150 150,200 Z" />
+                        <rect x="85" y="130" width="30" height="30" fill="#f8fafc" stroke="#94a3b8" />
+                    </g>
+
+                    <!-- Orejas (Movimiento leve) -->
+                    <g id="ears">
+                        <path id="left-ear" d="M55,100 C45,95 45,115 55,110" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+                        <path id="right-ear" d="M145,100 C155,95 155,115 145,110" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+                    </g>
+                    
+                    <!-- Contorno Cara (Estático, mantiene el volumen) -->
+                    <ellipse cx="100" cy="95" rx="45" ry="55" fill="#f8fafc" stroke="#94a3b8" stroke-width="2" />
+                    
+                    <!-- Elementos Faciales Internos (Movimiento medio) -->
+                    <g id="face-features">
+                        <!-- Cejas -->
+                        <path d="M66,70 Q78,65 90,72" fill="none" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M134,70 Q122,65 110,72" fill="none" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+                        
+                        <!-- Fondo de ojos (Esclerótica blanca) -->
+                        <use href="#left-eye-shape" fill="white" stroke="#94a3b8" stroke-width="1.5"/>
+                        <use href="#right-eye-shape" fill="white" stroke="#94a3b8" stroke-width="1.5"/>
+
+                        <!-- Pupila Ojo Izquierdo -->
+                        <g clip-path="url(#left-eye-clip)">
+                            <g id="left-pupil" class="pupil-group">
+                                <circle cx="80" cy="85" r="5" fill="#3b82f6" />
+                                <circle cx="80" cy="85" r="2.5" fill="#000000" />
+                                <circle cx="79" cy="84" r="0.8" fill="white" />
+                            </g>
+                        </g>
+
+                        <!-- Pupila Ojo Derecho -->
+                        <g clip-path="url(#right-eye-clip)">
+                            <g id="right-pupil" class="pupil-group">
+                                <circle cx="120" cy="85" r="5" fill="#3b82f6" />
+                                <circle cx="120" cy="85" r="2.5" fill="#000000" />
+                                <circle cx="119" cy="84" r="0.8" fill="white" />
+                            </g>
+                        </g>
+                        
+                        <!-- Boca -->
+                        <path d="M88,125 Q100,132 112,125" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                    </g>
+
+                    <!-- Nariz (Movimiento pronunciado para mayor profundidad) -->
+                    <g id="nose-group">
+                        <path d="M100,85 L95,110 L100,112 L105,110 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1" stroke-linejoin="round"/>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Control Deslizante (Slider) -->
+            <div class="px-2 sm:px-8">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Rotación de cabeza</span>
+                    <button id="btn-reset" class="text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded transition-colors">Centrar</button>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-gray-500 font-medium">Izq</span>
+                    <!-- Rango de movimiento reducido de -45/45 a -22/22 para evitar distorsiones -->
+                    <input type="range" id="rotation-slider" min="-22" max="22" value="0" class="w-full">
+                    <span class="text-sm text-gray-500 font-medium">Der</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interpretación en Vivo -->
+        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+            <h3 class="text-sm font-bold text-slate-700 mb-2">Interpretación en vivo:</h3>
+            <p id="live-feedback" class="text-slate-600 font-medium transition-colors">
+                Deslice el control para girar la cabeza y evaluar la respuesta ocular.
+            </p>
+        </div>
+
+        <div class="text-center mt-8">
+            <span class="text-xs text-gray-400">Simulador para uso educativo en la determinación de muerte por criterio neurológico.</span>
+        </div>
+    </div>
+
+    <script>
+        // Referencias a los elementos DOM
+        const slider = document.getElementById('rotation-slider');
+        const btnReset = document.getElementById('btn-reset');
+        const faceFeatures = document.getElementById('face-features');
+        const noseGroup = document.getElementById('nose-group');
+        const leftEar = document.getElementById('left-ear');
+        const rightEar = document.getElementById('right-ear');
+        const leftPupil = document.getElementById('left-pupil');
+        const rightPupil = document.getElementById('right-pupil');
+        const feedback = document.getElementById('live-feedback');
+
+        let currentState = 'presente';
+
+        // Escuchar cambios de estado (Presente/Ausente)
+        document.querySelectorAll('input[name="clinical-state"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                currentState = e.target.value;
+                updateSimulation(parseFloat(slider.value));
+            });
+        });
+
+        // Escuchar movimiento del slider
+        slider.addEventListener('input', (e) => {
+            updateSimulation(parseFloat(e.target.value));
+        });
+
+        // Botón para centrar
+        btnReset.addEventListener('click', () => {
+            slider.value = 0;
+            updateSimulation(0);
+        });
+
+        function updateSimulation(rotation) {
+            // Factor de paralaje (Parallax) para simular el giro 3D en un 2D estático
+            const faceTranslationX = rotation * 0.35; // Ojos, cejas, boca
+            const noseTranslationX = rotation * 0.50; // La nariz resalta más hacia adelante
+            const earTranslationX = rotation * 0.10;  // Las orejas se mueven levemente en la misma dirección
+
+            // Aplicar desplazamientos base
+            faceFeatures.style.transform = `translateX(${faceTranslationX}px)`;
+            noseGroup.style.transform = `translateX(${noseTranslationX}px)`;
+            leftEar.style.transform = `translateX(${earTranslationX}px)`;
+            rightEar.style.transform = `translateX(${earTranslationX}px)`;
+
+            // Lógica del Reflejo Pupilar
+            if (currentState === 'presente') {
+                // REFLEJO PRESENTE: Las pupilas intentan mantener la mirada al frente.
+                // Contrarrestan el movimiento de la cara (se desplazan en dirección opuesta al faceTranslationX)
+                // Usamos un factor de -0.9 en vez de -1 completo para que no se vea irreal.
+                const pupilCorrection = -faceTranslationX * 0.85; 
+                leftPupil.style.transform = `translateX(${pupilCorrection}px)`;
+                rightPupil.style.transform = `translateX(${pupilCorrection}px)`;
+            } else {
+                // REFLEJO AUSENTE (MCN): Las pupilas están fijas en las órbitas.
+                // Se mueven rígidamente junto con toda la cara (no hay corrección local).
+                leftPupil.style.transform = `translateX(0px)`;
+                rightPupil.style.transform = `translateX(0px)`;
+            }
+
+            // Actualizar texto de feedback
+            updateFeedback(rotation);
+        }
+
+        function updateFeedback(rotation) {
+            if (Math.abs(rotation) < 2) {
+                feedback.innerHTML = "Deslice el control para girar la cabeza y evaluar la respuesta ocular.";
+                feedback.className = "text-slate-600 font-medium transition-colors";
+                return;
+            }
+
+            const direction = rotation > 0 ? "derecha" : "izquierda";
+            
+            if (currentState === 'presente') {
+                feedback.innerHTML = `<span class="text-blue-600 font-bold">Rotando a la ${direction}:</span> Los ojos giran compensatoriamente hacia el lado opuesto (se mantienen mirando al frente). Vías vestibulo-oculares intactas.`;
+            } else {
+                feedback.innerHTML = `<span class="text-red-600 font-bold">Rotando a la ${direction}:</span> Los ojos se mueven pasivamente con la cabeza sin ajuste. Ausencia de reflejo (Ojos de Muñeca), indicativo de MCN.`;
+            }
+        }
+    </script>
+</body>
+</html>
