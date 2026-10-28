@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador UCI - Examen Clínico Interactivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        medical: { light: '#f0f7fb', DEFAULT: '#0277a8', dark: '#015a80', accent: '#148f77' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .reflex-btn.active-ausente, .precond-btn.active-no { background-color: #ef4444; color: white; border-color: #ef4444; }
+        .reflex-btn.active-presente, .precond-btn.active-si { background-color: #10b981; color: white; border-color: #10b981; }
+        .reflex-btn, .precond-btn { transition: all 0.2s ease; }
+        
+        .pupil { transition: transform 0.3s ease; }
+        .pupil.constrict { transform: scale(0.35) !important; }
+        
+        #flashlight {
+            position: absolute; width: 180px; height: 180px;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 60%);
+            border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+            transform: translate(-50%, -50%); z-index: 10; mix-blend-mode: screen;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-800 font-sans min-h-screen p-4 md:p-8 flex justify-center items-start text-[1.05rem]">
+
+    <div id="main-screen" class="w-full max-w-4xl bg-white rounded shadow-md overflow-hidden border border-gray-200">
+        <div class="bg-medical text-white p-5 flex items-center gap-4">
+            <i class="fa-solid fa-user-doctor text-5xl"></i>
+            <div>
+                <h1 class="text-3xl font-bold">Simulador de Examen Clínico UCI</h1>
+                <p class="text-blue-100 text-base">Práctica Interactiva: Diagnóstico de Muerte Encefálica</p>
+            </div>
+        </div>
+
+        <div class="p-6 md:p-8">
+            <div class="bg-medical-light border-l-4 border-medical p-4 mb-8 rounded-r flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 class="font-bold text-lg text-medical-dark mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-medical"></i>Instrucciones:
+                    </h3>
+                    <ol class="text-base text-slate-700 space-y-1 list-decimal list-inside">
+                        <li>Evalúa el estado de coma y respuesta motora del paciente.</li>
+                        <li>Haz clic en <strong>"Simular"</strong> para evaluar cada reflejo de tronco encefálico.</li>
+                        <li>Observa la respuesta y marca "Ausente" o "Presente".</li>
+                        <li>Emite tu conclusión final.</li>
+                    </ol>
+                </div>
+                <button onclick="initPatient()" class="text-base bg-white border border-gray-300 px-4 py-2 rounded hover:bg-gray-50 font-medium text-slate-700 transition flex items-center gap-2 shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-arrows-rotate"></i> Generar Nuevo Paciente
+                </button>
+            </div>
+
+            <h2 class="text-xl font-bold text-slate-800 mb-4 border-b border-gray-200 pb-2">1. Evaluación de Coma y Respuesta Motora</h2>
+            <div class="space-y-4 mb-10">
+                <div class="border border-gray-200 rounded p-4 bg-white flex flex-col md:flex-row justify-between md:items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-base text-slate-700 md:w-3/4">
+                        <strong>11.</strong> Coma sin respuesta a estímulo visual, auditivo o táctil.
+                    </div>
+                    <div class="flex gap-2 w-full md:w-1/4">
+                        <button id="btn-coma-si" class="precond-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 transition" onclick="setPrecond('coma', 'si')">Sí</button>
+                        <button id="btn-coma-no" class="precond-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 transition" onclick="setPrecond('coma', 'no')">No</button>
+                    </div>
+                </div>
+                <div class="border border-gray-200 rounded p-4 bg-white flex flex-col md:flex-row justify-between md:items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-base text-slate-700 md:w-3/4">
+                        <strong>12.</strong> Ausencia de respuesta motora, excepto reflejos mediados por médula, de cabeza/cara, cuello y extremidades, luego de estímulo nociceptivo aplicado a cabeza/cara, tronco y extremidades.
+                    </div>
+                    <div class="flex gap-2 w-full md:w-1/4">
+                        <button id="btn-motora-si" class="precond-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 transition" onclick="setPrecond('motora', 'si')">Sí</button>
+                        <button id="btn-motora-no" class="precond-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 transition" onclick="setPrecond('motora', 'no')">No</button>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="text-xl font-bold text-slate-800 mb-4 border-b border-gray-200 pb-2">2. Evaluación de Reflejos de Tronco Encefálico</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10" id="reflexes-container">
+            </div>
+
+            <h2 class="text-xl font-bold text-slate-800 mb-4 border-b border-gray-200 pb-2">3. Conclusión del Examen</h2>
+            <div class="mb-6">
+                <select id="conclusion" class="w-full border border-gray-300 rounded p-3 text-lg text-slate-700 focus:ring-2 focus:ring-medical focus:border-medical outline-none bg-white">
+                    <option value="" disabled selected>-- Seleccione el resultado final --</option>
+                    <option value="consistente">Examen físico consistente con Muerte Encefálica</option>
+                    <option value="incompleto">Examen incompleto</option>
+                    <option value="inconsistente">Examen físico inconsistente con Muerte Encefálica</option>
+                </select>
+            </div>
+            
+            <button onclick="evaluar()" class="w-full bg-medical-accent hover:bg-teal-700 text-white font-bold py-4 px-4 rounded text-lg shadow transition-colors flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check-double"></i> Evaluar Decisión
+            </button>
+            
+            <div id="feedback" class="mt-6 hidden p-5 rounded border text-lg"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Simulación -->
+    <div id="simulation-modal" class="fixed inset-0 bg-slate-900/90 hidden z-50 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+        <div class="w-full max-w-3xl bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
+            <div class="bg-gray-100 p-4 flex justify-between items-center border-b">
+                <h2 id="sim-title" class="text-xl font-bold text-slate-700 uppercase tracking-wide">EVALUANDO: REFLEJO</h2>
+                <button onclick="closeSimulation()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-base font-bold transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-arrow-left"></i> Volver al Examen
+                </button>
+            </div>
+            
+            <div id="sim-content" class="relative w-full h-[32rem] bg-slate-200 flex items-center justify-center overflow-hidden cursor-crosshair"></div>
+            <div id="sim-instructions" class="p-5 bg-gray-50 text-center text-slate-600 text-base border-t font-medium"></div>
+        </div>
+    </div>
+
+    <script>
+        const reflexesDef = [
+            { id: 'fotomotor', name: 'Reflejo Pupilar (Fotomotor)', icon: 'fa-eye' },
+            { id: 'corneal', name: 'Reflejo Corneal', icon: 'fa-eye-dropper' },
+            { id: 'oculocefalico', name: 'Reflejo Oculocefálico', icon: 'fa-head-side-medical' },
+            { id: 'oculovestibular', name: 'Reflejo Oculovestibular', icon: 'fa-ear-listen' },
+            { id: 'faringeo', name: 'Reflejo Faríngeo (Nauseoso)', icon: 'fa-teeth-open' },
+            { id: 'tusigeno', name: 'Reflejo Tusígeno (Traqueal)', icon: 'fa-lungs' }
+        ];
+
+        let patientState = {};
+        let examState = {};
+        let precondState = { coma: null, motora: null };
+
+        function initPatient() {
+            examState = {};
+            patientState = {};
+            precondState = { coma: null, motora: null };
+            
+            // Forzar caso fallido basado en la imagen para testing inicial
+            patientState.coma = 'si';
+            patientState.motora = 'si';
+            
+            reflexesDef.forEach(r => {
+                examState[r.id] = null;
+                patientState[r.id] = Math.random() < 0.25 ? 'presente' : 'ausente';
+            });
+            
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('conclusion').value = "";
+            
+            updatePrecondUI();
+            renderGrid();
+        }
+
+        function setPrecond(item, val) {
+            precondState[item] = val;
+            updatePrecondUI();
+        }
+
+        function updatePrecondUI() {
+            ['coma', 'motora'].forEach(item => {
+                const btnSi = document.getElementById(`btn-${item}-si`);
+                const btnNo = document.getElementById(`btn-${item}-no`);
+                if (btnSi && btnNo) {
+                    btnSi.className = `precond-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 transition ${precondState[item] === 'si' ? 'active-si' : ''}`;
+                    btnNo.className = `precond-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 transition ${precondState[item] === 'no' ? 'active-no' : ''}`;
+                }
+            });
+        }
+
+        function renderGrid() {
+            const container = document.getElementById('reflexes-container');
+            if (!container) return;
+            
+            let gridHTML = '';
+            
+            reflexesDef.forEach(r => {
+                const isAusente = examState[r.id] === 'ausente' ? 'active-ausente' : '';
+                const isPresente = examState[r.id] === 'presente' ? 'active-presente' : '';
+                
+                gridHTML += `
+                <div class="border border-gray-200 rounded p-5 bg-white flex flex-col shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="text-medical-dark w-10 h-10 flex items-center justify-center text-2xl">
+                                <i class="fa-solid ${r.icon}"></i>
+                            </div>
+                            <h4 class="font-semibold text-lg text-slate-800">${r.name}</h4>
+                        </div>
+                        <button onclick="openSimulation('${r.id}')" class="bg-gray-100 text-slate-700 border border-gray-300 px-3 py-1 rounded text-base hover:bg-gray-200 transition flex items-center gap-2 font-medium">
+                            <i class="fa-solid fa-play text-sm"></i> Simular
+                        </button>
+                    </div>
+                    <div class="flex gap-2 mt-auto">
+                        <button class="reflex-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 ${isAusente}" onclick="setExam('${r.id}', 'ausente')">Ausente</button>
+                        <button class="reflex-btn flex-1 border border-gray-300 rounded py-2 text-base font-medium hover:bg-gray-50 ${isPresente}" onclick="setExam('${r.id}', 'presente')">Presente</button>
+                    </div>
+                </div>`;
+            });
+            
+            container.innerHTML = gridHTML;
+        }
+
+        const faceTemplate = `
+            <div class="absolute -top-4 w-full flex justify-center gap-10 z-10">
+                <div id="eyebrow-left" class="w-10 h-1.5 bg-[#64748b] rounded transition-transform duration-200"></div>
+                <div id="eyebrow-right" class="w-10 h-1.5 bg-[#64748b] rounded transition-transform duration-200"></div>
+            </div>
+            <div class="flex justify-center gap-8 mt-6 mb-6 z-10">
+                <div id="eye-left" class="w-[60px] h-[30px] bg-[#eef2f6] border-[3px] border-[#cbd5e1] rounded-full flex items-center justify-center transition-transform duration-200">
+                    <div class="w-10 h-[2px] bg-[#94a3b8]"></div>
+                </div>
+                <div id="eye-right" class="w-[60px] h-[30px] bg-[#eef2f6] border-[3px] border-[#cbd5e1] rounded-full flex items-center justify-center transition-transform duration-200">
+                    <div class="w-10 h-[2px] bg-[#94a3b8]"></div>
+                </div>
+            </div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[20px] border-l-transparent border-r-transparent border-b-[#cbd5e1] mx-auto mb-6 z-10"></div>
+        `;
+
+        function setExam(reflex, value) {
+            examState[reflex] = value;
+            renderGrid(); 
+        }
+
+        function openSimulation(reflexId) {
+            const modal = document.getElementById('simulation-modal');
+            const title = document.getElementById('sim-title');
+            const content = document.getElementById('sim-content');
+            const inst = document.getElementById('sim-instructions');
+            
+            modal.classList.remove('hidden');
+            const reflexInfo = reflexesDef.find(r => r.id === reflexId);
+            title.innerText = `EVALUANDO: ${reflexInfo ? reflexInfo.name.toUpperCase() : 'REFLEJO'}`;
+            
+            content.onmousemove = null;
+            content.onmouseleave = null;
+            content.onclick = null;
+            content.innerHTML = '';
+            content.className = "relative w-full h-[32rem] bg-[#e2e8f0] flex items-center justify-center overflow-hidden cursor-crosshair";
+
+            const isPresent = patientState[reflexId] === 'presente';
+
+            if (reflexId === 'fotomotor') {
+                content.classList.replace('bg-[#e2e8f0]', 'bg-slate-900');
+                content.innerHTML = `
+                    <div id="flashlight"></div>
+                    <div class="flex gap-12 z-0 pointer-events-none">
+                        <div id="eye-left-foto" class="w-32 h-20 bg-white rounded-[40px] flex items-center justify-center relative overflow-hidden shadow-inner">
+                            <div class="w-16 h-16 bg-amber-700 rounded-full flex items-center justify-center"><div id="pupil-left" class="pupil w-8 h-8 bg-black rounded-full"></div></div>
+                        </div>
+                        <div id="eye-right-foto" class="w-32 h-20 bg-white rounded-[40px] flex items-center justify-center relative overflow-hidden shadow-inner">
+                            <div class="w-16 h-16 bg-amber-700 rounded-full flex items-center justify-center"><div id="pupil-right" class="pupil w-8 h-8 bg-black rounded-full"></div></div>
+                        </div>
+                    </div>`;
+                inst.innerText = "Mueve el cursor (linterna) sobre los ojos. Observa la miosis directa y consensual.";
+                
+                const flash = document.getElementById('flashlight');
+                const eyeL = document.getElementById('eye-left-foto');
+                const eyeR = document.getElementById('eye-right-foto');
+                
+                content.onmousemove = (e) => {
+                    const rect = content.getBoundingClientRect();
+                    flash.style.opacity = 1;
+                    flash.style.left = (e.clientX - rect.left) + 'px';
+                    flash.style.top = (e.clientY - rect.top) + 'px';
+                    
+                    if (isPresent) {
+                        const rectL = eyeL.getBoundingClientRect();
+                        const rectR = eyeR.getBoundingClientRect();
+                        const overLeft = e.clientX >= rectL.left && e.clientX <= rectL.right && e.clientY >= rectL.top && e.clientY <= rectL.bottom;
+                        const overRight = e.clientX >= rectR.left && e.clientX <= rectR.right && e.clientY >= rectR.top && e.clientY <= rectR.bottom;
+                        
+                        if (overLeft || overRight) {
+                            document.getElementById('pupil-left').classList.add('constrict');
+                            document.getElementById('pupil-right').classList.add('constrict');
+                        } else {
+                            document.getElementById('pupil-left').classList.remove('constrict');
+                            document.getElementById('pupil-right').classList.remove('constrict');
+                        }
+                    }
+                };
+                content.onmouseleave = () => { 
+                    flash.style.opacity = 0; 
+                    if (isPresent) {
+                        document.getElementById('pupil-left').classList.remove('constrict');
+                        document.getElementById('pupil-right').classList.remove('constrict');
+                    }
+                };
+            } 
+            else if (reflexId === 'corneal') {
+                content.innerHTML = `
+                    <div class="relative flex flex-col items-center scale-110">
+                        <div class="w-[260px] h-[340px] bg-[#f8fafc] border-4 border-[#94a3b8] rounded-[100px] relative flex flex-col items-center pt-24 shadow-md">
+                            <div class="absolute top-[70px] w-full flex justify-center gap-10 z-10">
+                                <div class="w-12 h-2 bg-[#94a3b8] rounded rotate-[5deg]"></div>
+                                <div class="w-12 h-2 bg-[#94a3b8] rounded -rotate-[5deg]"></div>
+                            </div>
+                            <div class="absolute top-[110px] w-full flex justify-center gap-8 z-10">
+                                <div class="relative w-[60px] h-[35px] bg-white border-[3px] border-[#cbd5e1] rounded-[18px] flex items-center justify-center overflow-hidden cursor-pointer" onclick="testCorneal('left', ${isPresent})">
+                                    <div class="w-6 h-6 bg-[#92400e] rounded-full"></div>
+                                    <div id="eyelid-left" class="absolute top-0 left-0 w-full h-0 bg-[#f8fafc] flex items-center justify-center transition-all duration-200">
+                                        <div class="w-10 h-[2px] bg-[#94a3b8] opacity-0 transition-opacity duration-200" id="eyeline-left"></div>
+                                    </div>
+                                </div>
+                                <div class="relative w-[60px] h-[35px] bg-white border-[3px] border-[#cbd5e1] rounded-[18px] flex items-center justify-center overflow-hidden cursor-pointer" onclick="testCorneal('right', ${isPresent})">
+                                    <div class="w-6 h-6 bg-[#92400e] rounded-full"></div>
+                                    <div id="eyelid-right" class="absolute top-0 left-0 w-full h-0 bg-[#f8fafc] flex items-center justify-center transition-all duration-200">
+                                        <div class="w-10 h-[2px] bg-[#94a3b8] opacity-0 transition-opacity duration-200" id="eyeline-right"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="absolute top-[170px] left-1/2 transform -translate-x-1/2 w-4 h-10 bg-[#e2e8f0] rounded-t-full rounded-b-sm z-10"></div>
+                            <div class="absolute top-[240px] left-1/2 transform -translate-x-1/2 w-12 h-1 bg-[#94a3b8] z-10 rounded"></div>
+                        </div>
+                    </div>`;
+                inst.innerText = "Haz clic directamente sobre los ojos abiertos para simular el toque con hisopo.";
+            }
+            else if (reflexId === 'oculocefalico') {
+                content.innerHTML = `
+                    <div class="relative flex flex-col items-center justify-center w-full h-full scale-110">
+                        <div id="head-wrap" class="w-[260px] h-[340px] bg-[#f8fafc] border-4 border-[#94a3b8] rounded-[100px] flex flex-col items-center justify-center relative shadow-md cursor-grab overflow-hidden">
+                            <div id="face-features" class="flex flex-col w-full h-full relative transition-transform duration-500">
+                                <div class="absolute top-[70px] w-full flex justify-center gap-10 z-10">
+                                    <div class="w-12 h-2 bg-[#94a3b8] rounded rotate-[5deg]"></div>
+                                    <div class="w-12 h-2 bg-[#94a3b8] rounded -rotate-[5deg]"></div>
+                                </div>
+                                <div class="absolute top-[110px] w-full flex justify-center gap-8 z-10">
+                                    <div class="relative w-[60px] h-[35px] bg-white border-[3px] border-[#cbd5e1] rounded-[18px] flex items-center justify-center overflow-hidden">
+                                        <div id="iris-left" class="w-6 h-6 bg-blue-600 rounded-full transition-transform duration-500"></div>
+                                    </div>
+                                    <div class="relative w-[60px] h-[35px] bg-white border-[3px] border-[#cbd5e1] rounded-[18px] flex items-center justify-center overflow-hidden">
+                                        <div id="iris-right" class="w-6 h-6 bg-blue-600 rounded-full transition-transform duration-500"></div>
+                                    </div>
+                                </div>
+                                <div class="absolute top-[170px] left-1/2 transform -translate-x-1/2 w-4 h-10 bg-[#e2e8f0] rounded-t-full rounded-b-sm z-10"></div>
+                                <div class="absolute top-[240px] left-1/2 transform -translate-x-1/2 w-12 h-1 bg-[#94a3b8] z-10 rounded"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                inst.innerText = "Haz clic en la mitad izquierda o derecha del recuadro para girar la cabeza del paciente lateralmente.";
+                
+                content.onclick = (e) => {
+                    const rect = content.getBoundingClientRect();
+                    const isLeft = (e.clientX - rect.left) < rect.width / 2;
+                    const face = document.getElementById('face-features');
+                    const irisL = document.getElementById('iris-left');
+                    const irisR = document.getElementById('iris-right');
+                    
+                    face.style.transform = isLeft ? 'translateX(-30px)' : 'translateX(30px)';
+
+                    if (isPresent) {
+                        const eyeMove = isLeft ? 'translateX(15px)' : 'translateX(-15px)';
+                        if(irisL) irisL.style.transform = eyeMove;
+                        if(irisR) irisR.style.transform = eyeMove;
+                    }
+
+                    setTimeout(() => {
+                        face.style.transform = 'translateX(0)';
+                        if (isPresent) {
+                            if(irisL) irisL.style.transform = 'translateX(0)';
+                            if(irisR) irisR.style.transform = 'translateX(0)';
+                        }
+                    }, 1200);
+                };
+            }
+            else if (reflexId === 'oculovestibular') {
+                content.innerHTML = `
+                    <div class="relative flex items-center justify-center w-full h-full scale-110">
+                        <div id="head-wrap-vestibular" class="w-[260px] h-[340px] bg-[#f8fafc] border-4 border-[#94a3b8] rounded-[100px] flex flex-col items-center justify-center relative shadow-md">
+                            
+                            <div class="absolute -left-6 top-1/2 -translate-y-1/2 w-8 h-16 bg-[#e2e8f0] border-4 border-[#94a3b8] border-r-0 rounded-l-full cursor-pointer hover:bg-slate-300 flex items-center justify-center transition-colors" onclick="testVestibular('left', ${isPresent})">
+                                <i class="fa-solid fa-droplet text-blue-500 opacity-0 transition-opacity duration-300 text-3xl absolute -left-8" id="drop-left"></i>
+                                <span id="label-drop-left" class="absolute top-full mt-4 left-1/2 -translate-x-1/2 text-base font-bold text-blue-600 bg-white px-3 py-1.5 rounded shadow-md opacity-0 transition-opacity duration-300 whitespace-nowrap z-20 pointer-events-none">Irrigación: Agua 0ºC</span>
+                            </div>
+                            
+                            <div class="absolute -right-6 top-1/2 -translate-y-1/2 w-8 h-16 bg-[#e2e8f0] border-4 border-[#94a3b8] border-l-0 rounded-r-full cursor-pointer hover:bg-slate-300 flex items-center justify-center transition-colors" onclick="testVestibular('right', ${isPresent})">
+                                 <i class="fa-solid fa-droplet text-blue-500 opacity-0 transition-opacity duration-300 text-3xl absolute -right-8" id="drop-right"></i>
+                                 <span id="label-drop-right" class="absolute top-full mt-4 left-1/2 -translate-x-1/2 text-base font-bold text-blue-600 bg-white px-3 py-1.5 rounded shadow-md opacity-0 transition-opacity duration-300 whitespace-nowrap z-20 pointer-events-none">Irrigación: Agua 0ºC</span>
+                            </div>
+                            
+                            <div id="face-features-vest" class="flex flex-col w-full h-full relative transition-transform duration-500">
+                                <div class="absolute top-[70px] w-full flex justify-center gap-10 z-10">
+                                    <div class="w-12 h-2 bg-[#94a3b8] rounded rotate-[5deg]"></div>
+                                    <div class="w-12 h-2 bg-[#94a3b8] rounded -rotate-[5deg]"></div>
+                                </div>
+                                <div class="absolute top-[110px] w-full flex justify-center gap-8 z-10">
+                                    <div class="relative w-[60px] h-[35px] bg-white border-[3px] border-[#cbd5e1] rounded-[18px] flex items-center justify-center overflow-hidden">
+                                        <div id="vest-iris-left" class="w-6 h-6 bg-blue-600 rounded-full transition-transform duration-500"></div>
+                                    </div>
+                                    <div class="relative w-[60px] h-[35px] bg-white border-[3px] border-[#cbd5e1] rounded-[18px] flex items-center justify-center overflow-hidden">
+                                        <div id="vest-iris-right" class="w-6 h-6 bg-blue-600 rounded-full transition-transform duration-500"></div>
+                                    </div>
+                                </div>
+                                <div class="absolute top-[170px] left-1/2 transform -translate-x-1/2 w-4 h-10 bg-[#e2e8f0] rounded-t-full rounded-b-sm z-10"></div>
+                                <div class="absolute top-[240px] left-1/2 transform -translate-x-1/2 w-12 h-1 bg-[#94a3b8] z-10 rounded"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                inst.innerText = "Haz clic en una de las orejas para irrigar el conducto auditivo con agua fría.";
+            }
+            else if (reflexId === 'faringeo') {
+                content.innerHTML = `
+                    <div class="relative flex items-center justify-center w-full h-full pt-10 scale-110">
+                        <div id="head-wrap-faringeo" class="w-[280px] h-[360px] bg-[#f8fafc] border-[5px] border-[#94a3b8] rounded-[120px] flex flex-col items-center relative shadow-lg pt-16">
+                             <div class="w-full relative flex flex-col items-center z-10">
+                                 ${faceTemplate}
+                                 <div class="relative w-[70px] h-[30px] bg-[#1a2b3c] rounded-full mt-2 z-10 shadow-inner flex justify-center"></div>
+                             </div>
+                            <div id="tet-tube-faringeo" class="absolute top-[220px] w-[30px] h-[200px] bg-[#b8d4f8]/60 border-x-2 border-[#93bbf1] cursor-pointer hover:bg-[#b8d4f8]/80 flex justify-center z-20 transition-transform duration-100 origin-top" onclick="testFaringeo(${isPresent})">
+                                <div class="w-1.5 h-full bg-[#8bb4eb]/70"></div>
+                                <div class="absolute bottom-6 w-[36px] h-3 bg-slate-300 border-2 border-slate-400"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                inst.innerText = "Haz clic en el tubo endotraqueal para desplazarlo levemente y evaluar el reflejo faríngeo.";
+            }
+            else if (reflexId === 'tusigeno') {
+                content.innerHTML = `
+                    <div class="relative flex items-center justify-center w-full h-full pt-10 scale-110">
+                        <div id="head-wrap-tusigeno" class="w-[280px] h-[360px] bg-[#f8fafc] border-[5px] border-[#94a3b8] rounded-[120px] flex flex-col items-center relative shadow-lg pt-16 transition-transform duration-100">
+                             <div class="w-full relative flex flex-col items-center z-10">
+                                 ${faceTemplate}
+                                 <div id="mouth-tusigeno" class="relative w-[70px] h-[30px] bg-[#1a2b3c] rounded-full mt-2 z-10 shadow-inner flex justify-center transition-all duration-100"></div>
+                             </div>
+                            <div id="tet-tube-tusigeno" class="absolute top-[220px] w-[30px] h-[120px] bg-[#b8d4f8]/60 border-x-2 border-[#93bbf1] cursor-pointer hover:bg-[#b8d4f8]/80 flex justify-center z-20 transition-transform duration-100 origin-top overflow-hidden" onclick="testTusigeno(${isPresent})">
+                                <div class="w-1.5 h-full bg-[#8bb4eb]/70 z-10"></div>
+                                <div id="sonda-aspiracion" class="absolute -bottom-full w-[9px] h-full bg-green-400 border-x border-green-600 rounded-t-full transition-transform duration-300 z-20"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                inst.innerText = "Haz clic en el tubo endotraqueal para introducir la sonda de aspiración y observar la respuesta.";
+            }
+        }
+
+        function testCorneal(side, isPresent) {
+            const lidL = document.getElementById('eyelid-left');
+            const lidR = document.getElementById('eyelid-right');
+            const lineL = document.getElementById('eyeline-left');
+            const lineR = document.getElementById('eyeline-right');
+            
+            if (isPresent) {
+                if(lidL && lidR) {
+                    lidL.style.height = '100%';
+                    lidR.style.height = '100%';
+                    lineL.style.opacity = '1';
+                    lineR.style.opacity = '1';
+                    
+                    setTimeout(() => { 
+                        lidL.style.height = '0';
+                        lidR.style.height = '0';
+                        lineL.style.opacity = '0';
+                        lineR.style.opacity = '0';
+                    }, 350);
+                }
+            }
+        }
+
+        function testVestibular(side, isPresent) {
+            const drop = document.getElementById(`drop-${side}`);
+            const label = document.getElementById(`label-drop-${side}`);
+            const irisL = document.getElementById('vest-iris-left');
+            const irisR = document.getElementById('vest-iris-right');
+
+            drop.classList.remove('opacity-0'); drop.classList.add('opacity-100');
+            if(label) { label.classList.remove('opacity-0'); label.classList.add('opacity-100'); }
+            
+            if (isPresent) {
+                const move = side === 'left' ? 'translateX(-15px)' : 'translateX(15px)';
+                if (irisL) irisL.style.transform = move;
+                if (irisR) irisR.style.transform = move;
+            }
+
+            setTimeout(() => {
+                drop.classList.remove('opacity-100'); drop.classList.add('opacity-0');
+                if(label) { label.classList.remove('opacity-100'); label.classList.add('opacity-0'); }
+                if (isPresent) {
+                    if (irisL) irisL.style.transform = 'translateX(0)';
+                    if (irisR) irisR.style.transform = 'translateX(0)';
+                }
+            }, 3000);
+        }
+
+        function testFaringeo(isPresent) {
+            const tet = document.getElementById('tet-tube-faringeo');
+            const browL = document.getElementById('eyebrow-left');
+            const browR = document.getElementById('eyebrow-right');
+            const eyeL = document.getElementById('eye-left');
+            const eyeR = document.getElementById('eye-right');
+
+            let ticks = 0;
+            const wiggle = setInterval(() => {
+                if(ticks % 2 === 0) tet.style.transform = 'rotate(4deg) translateX(4px)';
+                else tet.style.transform = 'rotate(-4deg) translateX(-4px)';
+                ticks++;
+                if(ticks > 5) {
+                    clearInterval(wiggle);
+                    tet.style.transform = 'rotate(0deg) translateX(0px)';
+                }
+            }, 100);
+
+            if (isPresent) {
+                setTimeout(() => {
+                    browL.style.transform = 'rotate(15deg) translateY(6px)';
+                    browR.style.transform = 'rotate(-15deg) translateY(6px)';
+                    eyeL.style.transform = 'scaleY(0.4)';
+                    eyeR.style.transform = 'scaleY(0.4)';
+                    
+                    setTimeout(() => {
+                        browL.style.transform = 'rotate(0deg) translateY(0px)';
+                        browR.style.transform = 'rotate(0deg) translateY(0px)';
+                        eyeL.style.transform = 'scaleY(1)';
+                        eyeR.style.transform = 'scaleY(1)';
+                    }, 800);
+                }, 200);
+            }
+        }
+
+        function testTusigeno(isPresent) {
+            const sonda = document.getElementById('sonda-aspiracion');
+            const mouth = document.getElementById('mouth-tusigeno');
+            const tet = document.getElementById('tet-tube-tusigeno');
+            const head = document.getElementById('head-wrap-tusigeno');
+
+            sonda.style.transform = 'translateY(-100%)';
+
+            setTimeout(() => {
+                if (isPresent) {
+                    mouth.style.height = '15px';
+                    let ticks = 0;
+                    const cough = setInterval(() => {
+                        if(ticks % 2 === 0) {
+                            head.style.transform = 'translateY(10px)';
+                            tet.style.transform = 'translateY(5px)';
+                        } else {
+                            head.style.transform = 'translateY(0px)';
+                            tet.style.transform = 'translateY(0px)';
+                        }
+                        ticks++;
+                        if(ticks > 4) {
+                            clearInterval(cough);
+                            head.style.transform = 'translateY(0px)';
+                            tet.style.transform = 'translateY(0px)';
+                            setTimeout(() => { mouth.style.height = '30px'; }, 300);
+                        }
+                    }, 80);
+                }
+
+                setTimeout(() => {
+                    sonda.style.transform = 'translateY(0)';
+                }, 1000);
+                
+            }, 400); 
+        }
+
+        function closeSimulation() {
+            document.getElementById('simulation-modal').classList.add('hidden');
+        }
+
+        function evaluar() {
+            const fb = document.getElementById('feedback');
+            const userConclusion = document.getElementById('conclusion').value;
+            
+            fb.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'border-red-300', 'bg-green-100', 'text-green-800', 'border-green-300', 'bg-yellow-100', 'text-yellow-800', 'border-yellow-300');
+            
+            const missedPrecond = precondState.coma === null || precondState.motora === null;
+            const missedReflexes = reflexesDef.filter(r => examState[r.id] === null);
+
+            if (missedPrecond || missedReflexes.length > 0) {
+                fb.classList.add('bg-yellow-100', 'text-yellow-800', 'border-yellow-300');
+                fb.innerHTML = `<strong><i class="fa-solid fa-triangle-exclamation"></i> Atención:</strong> Faltan evaluar algunos pre-requisitos o reflejos.`;
+                return;
+            }
+
+            if (!userConclusion) {
+                fb.classList.add('bg-yellow-100', 'text-yellow-800', 'border-yellow-300');
+                fb.innerHTML = `<strong><i class="fa-solid fa-triangle-exclamation"></i> Atención:</strong> Seleccione una conclusión.`;
+                return;
+            }
+
+            let correctStates = 0;
+            reflexesDef.forEach(r => { if (examState[r.id] === patientState[r.id]) correctStates++; });
+            if (precondState.coma === patientState.coma) correctStates++;
+            if (precondState.motora === patientState.motora) correctStates++;
+
+            const totalItems = reflexesDef.length + 2;
+
+            if (correctStates < totalItems) {
+                fb.classList.add('bg-red-100', 'text-red-800', 'border-red-300');
+                fb.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Error en el examen físico:</strong> Has identificado incorrectamente ${totalItems - correctStates} ítem(s) clínico(s). Revisa tus observaciones.`;
+                return;
+            }
+
+            const hasReflexes = reflexesDef.some(r => patientState[r.id] === 'presente');
+            let isCorrectConclusion = false;
+
+            if (hasReflexes || precondState.coma === 'no' || precondState.motora === 'no') {
+                if (userConclusion === 'inconsistente') isCorrectConclusion = true;
+            } else {
+                if (userConclusion === 'consistente') isCorrectConclusion = true;
+            }
+
+            if (isCorrectConclusion) {
+                fb.classList.add('bg-green-100', 'text-green-800', 'border-green-300');
+                fb.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> ¡Excelente evaluación!</strong> Has identificado correctamente todos los parámetros clínicos y tu conclusión es acertada.`;
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800', 'border-red-300');
+                fb.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Error en la conclusión:</strong> Tus hallazgos físicos son correctos, pero la conclusión diagnóstica es errónea basándose en la data obtenida.`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initPatient);
+    </script>
+</body>
+</html>

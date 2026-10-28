@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es" style="font-size: 120%;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Clínico UCI - Muerte Encefálica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+        .tabla-medica th { background-color: #0f766e; color: white; padding: 12px; text-align: left; font-size: 0.95rem; }
+        .tabla-medica td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 0.95rem; color: #334155; }
+        .tabla-medica tr:nth-child(even) { background-color: #f1f5f9; }
+        .grupo-lab { background-color: #cbd5e1; font-weight: bold; color: #0f172a; padding: 8px 12px; text-transform: uppercase; font-size: 0.85rem; margin-top: 20px; border-left: 4px solid #0f766e; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden text-base">
+
+    <!-- Encabezado -->
+    <header class="bg-teal-800 text-white p-4 shadow-md z-10 flex-shrink-0">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-staff-snake text-3xl text-teal-300"></i>
+                <div>
+                    <h1 class="text-2xl font-bold leading-tight">Simulador Clínico UCI - UNSA</h1>
+                    <p class="text-sm text-teal-200">Taller Avanzado: Pre-requisitos de Muerte por Criterios Neurológicos</p>
+                </div>
+            </div>
+            <div class="text-right hidden md:block">
+                <p class="text-sm font-semibold">Marco Normativo:</p>
+                <p class="text-xs text-teal-200">Ley 28189 | RM254 | DS 016-2026-SA</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-grow container mx-auto p-4 flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <!-- Panel Lateral -->
+        <aside class="w-full md:w-1/4 bg-white rounded-xl shadow border-t-4 border-teal-700 flex flex-col flex-shrink-0 overflow-y-auto h-full">
+            <div class="p-4 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-base font-bold text-slate-700 uppercase tracking-wider"><i class="fa-solid fa-clipboard-list mr-2"></i>Fichas Clínicas</h2>
+            </div>
+            <div class="p-3 flex flex-col gap-2 flex-grow">
+                <button id="btn-case-A" onclick="seleccionarCaso('A')" class="caso-btn w-full text-left p-3 rounded-lg border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-base font-semibold flex justify-between items-center group bg-white">
+                    <span>Caso Clínico A</span> <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-teal-500"></i>
+                </button>
+                <button id="btn-case-B" onclick="seleccionarCaso('B')" class="caso-btn w-full text-left p-3 rounded-lg border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-base font-semibold flex justify-between items-center group bg-white">
+                    <span>Caso Clínico B</span> <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-teal-500"></i>
+                </button>
+                <button id="btn-case-C" onclick="seleccionarCaso('C')" class="caso-btn w-full text-left p-3 rounded-lg border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-base font-semibold flex justify-between items-center group bg-white">
+                    <span>Caso Clínico C</span> <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-teal-500"></i>
+                </button>
+                <button id="btn-case-D" onclick="seleccionarCaso('D')" class="caso-btn w-full text-left p-3 rounded-lg border border-slate-200 hover:border-teal-500 hover:bg-teal-50 transition-all text-base font-semibold flex justify-between items-center group bg-white">
+                    <span>Caso Clínico D</span> <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-teal-500"></i>
+                </button>
+            </div>
+            <div class="p-4 bg-amber-50 text-amber-800 text-sm border-t border-amber-200 m-3 rounded-lg">
+                <p><strong><i class="fa-solid fa-user-doctor mr-1"></i> Docente:</strong> Indique al alumno que revise minuciosamente TODAS las pestañas de información antes de emitir su juicio clínico final.</p>
+            </div>
+        </aside>
+
+        <!-- Área de Trabajo -->
+        <section class="w-full md:w-3/4 bg-white rounded-xl shadow flex flex-col overflow-hidden relative min-h-[500px] h-full">
+            
+            <div id="vista-bienvenida" class="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50 w-full flex-grow">
+                <div class="w-24 h-24 bg-teal-100 rounded-full flex items-center justify-center mb-5 shadow-inner">
+                    <i class="fa-solid fa-laptop-medical text-5xl text-teal-600"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Simulador Activo</h2>
+                <p class="text-slate-500 text-lg max-w-md">Seleccione una ficha clínica del panel izquierdo para desplegar el expediente médico completo.</p>
+            </div>
+
+            <div id="vista-clinica" class="hidden flex-col h-full w-full">
+                
+                <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-shrink-0">
+                    <h2 class="text-2xl font-extrabold text-teal-800 flex items-center gap-2">
+                        <i class="fa-solid fa-file-waveform text-teal-600"></i> <span id="titulo-caso">Caso Clínico</span>
+                    </h2>
+                </div>
+                
+                <div class="p-3 bg-white flex flex-wrap gap-2 border-b border-slate-200 shadow-sm justify-center flex-shrink-0">
+                    <button onclick="mostrarPestana('antecedentes')" id="tab-antecedentes" class="tab-btn px-4 py-2 bg-slate-100 text-slate-700 hover:bg-teal-600 hover:text-white font-semibold text-base rounded transition-colors"><i class="fa-solid fa-id-card mr-2"></i>Ficha y Anamnesis</button>
+                    <button onclick="mostrarPestana('evolucion')" id="tab-evolucion" class="tab-btn px-4 py-2 bg-slate-100 text-slate-700 hover:bg-teal-600 hover:text-white font-semibold text-base rounded transition-colors"><i class="fa-solid fa-chart-line mr-2"></i>Evolución UCI</button>
+                    <button onclick="mostrarPestana('situacion')" id="tab-situacion" class="tab-btn px-4 py-2 bg-slate-100 text-slate-700 hover:bg-teal-600 hover:text-white font-semibold text-base rounded transition-colors"><i class="fa-solid fa-bed-pulse mr-2"></i>Situación Actual</button>
+                    <button onclick="mostrarPestana('examenes')" id="tab-examenes" class="tab-btn px-4 py-2 bg-slate-100 text-slate-700 hover:bg-teal-600 hover:text-white font-semibold text-base rounded transition-colors"><i class="fa-solid fa-microscope mr-2"></i>Exámenes Auxiliares</button>
+                </div>
+
+                <div class="flex-grow overflow-y-auto p-6 bg-slate-50">
+                    <div id="contenido-pantalla" class="bg-white p-6 rounded shadow-sm border border-slate-200 min-h-full text-slate-700 text-base leading-relaxed fade-in pb-12">
+                    </div>
+                </div>
+
+                <!-- Panel de Decisión Clínica Final (Ajustado compactación adicional) -->
+                <div class="p-2.5 bg-slate-800 text-white flex-shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)]">
+                    <h3 class="font-bold mb-0.5 flex items-center gap-1.5 text-teal-300 text-sm"><i class="fa-solid fa-gavel text-xs"></i> Decisión Clínica Final</h3>
+                    <p class="text-xs mb-2 text-slate-300">Tras revisar exhaustivamente el expediente: <strong>¿Cumple este paciente los pre-requisitos para iniciar la evaluación clínica de muerte encefálica?</strong></p>
+                    <div class="flex gap-2.5">
+                        <button onclick="evaluarRespuesta(true)" class="flex-1 bg-teal-600 hover:bg-teal-500 py-1.5 rounded font-bold text-xs transition shadow">SÍ, INICIAR PROTOCOLO</button>
+                        <button onclick="evaluarRespuesta(false)" class="flex-1 bg-rose-600 hover:bg-rose-500 py-1.5 rounded font-bold text-xs transition shadow">NO, EVALUACIÓN APLAZADA</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal de Feedback -->
+    <div id="modal-feedback" class="fixed inset-0 bg-slate-900 bg-opacity-80 hidden items-center justify-center z-50 p-4 fade-in">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div id="modal-header" class="p-4 flex items-center gap-3">
+                <i id="modal-icono" class="fa-solid text-3xl"></i>
+                <h3 id="modal-titulo" class="text-2xl font-bold"></h3>
+            </div>
+            <div class="p-6 text-slate-700 text-lg leading-relaxed">
+                <p id="modal-mensaje"></p>
+            </div>
+            <div class="bg-slate-100 p-4 text-right border-t border-slate-200">
+                <button onclick="cerrarModal()" class="px-5 py-2 bg-slate-700 hover:bg-slate-800 text-white font-semibold text-base rounded shadow transition-colors">Volver al caso</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lógica de la Aplicación -->
+    <script>
+        const baseDatos = {
+            'A': {
+                titulo: "FICHA CLÍNICA A",
+                antecedentes: `
+                    <div class="mb-6 overflow-hidden rounded border border-slate-300">
+                        <table class="w-full text-base text-left">
+                            <tbody class="divide-y divide-slate-200">
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Edad / sexo:</strong> 48 años / masculino</td>
+                                    <td class="px-4 py-2"><strong>Servicio:</strong> UCI polivalente</td>
+                                </tr>
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Ingreso a UCI:</strong> Hace 30 horas</td>
+                                    <td class="px-4 py-2"><strong>Motivo de ingreso:</strong> Hemorragia intracerebral masiva</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">1. Historia de la enfermedad actual</h5>
+                    <p class="mb-3 text-justify">Paciente de 48 años, con hipertensión arterial de 12 años de evolución y adherencia irregular. Es encontrado inconsciente en su domicilio, con vómitos y respiración irregular. En Emergencia presenta Glasgow 5/15, PA 220/125 mmHg y anisocoria.</p>
+                    <p class="text-justify">Se intuba y se inicia ventilación mecánica. La TC sin contraste demuestra hemorragia intracerebral profunda derecha, extensión intraventricular, edema difuso, compresión de cisternas basales y desviación de línea media de 12 mm. Durante las primeras horas presenta deterioro neurológico progresivo. Neurocirugía considera que la lesión tiene pronóstico extremadamente desfavorable y no identifica una intervención con expectativa razonable de recuperación funcional.</p>
+                `,
+                evolucion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">2. Evolución</h5>
+                    <p class="text-justify">Mantenido en ventilación mecánica. Para el manejo del edema cerebral y la hipertensión endocraneana se administró sedoanalgesia profunda continua, la cual está en proceso de retiro reciente sin confirmación de depuración. Soporte vasopresor a dosis bajas para mantener presión de perfusión cerebral.</p>
+                `,
+                situacion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">3. Situación Actual</h5>
+                    <ul class="list-disc pl-5 mb-4 space-y-1">
+                        <li><strong>Neurológico:</strong> Coma profundo arreactivo. Ausencia clínica de reflejos de tronco.</li>
+                        <li><strong>Hemodinámica:</strong> PA 115/75 mmHg (PAM > 60).</li>
+                        <li><strong>Ventilatorio:</strong> VM controlada, SatO2 98%.</li>
+                    </ul>
+                `,
+                examenes: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">4. Exámenes auxiliares</h5>
+                    <div class="mb-4 text-center">
+                        <img src="CasoA.jpg" alt="Neuroimagen Caso A" class="max-h-52 mx-auto rounded shadow-md border border-slate-200 object-contain">
+                    </div>
+                    <p class="mb-2"><strong>Neuroimagen:</strong> TC inicial: hemorragia profunda extensa con extensión intraventricular. TC a las 24 horas: aumento del edema, compresión de cisternas basales y herniación transtentorial. No se describe lesión primaria aislada de fosa posterior.</p>
+                    <p class="mb-2"><strong>Laboratorio:</strong> Hemoglobina 12,8 g/dL; Na 145 mmol/L; K 4,1 mmol/L; glucosa 118 mg/dL; creatinina 1,0 mg/dL; pH 7,36; PaCO2 39 mmHg; temperatura central 35,0 °C.</p>
+                    <p class="mb-2"><strong>Información farmacológica:</strong> No se dispone de concentraciones plasmáticas de midazolam ni fentanilo; no se ha documentado valoración del tiempo de eliminación en relación con la duración de las infusiones; no se ha realizado TOF en las últimas horas.</p>
+                    <p class="mb-4"><strong>Información toxicológica:</strong> No se ha solicitado alcoholemia ni panel toxicológico en sangre u orina. No hay datos clínicos específicos de intoxicación exógena, pero debe valorarse si estas pruebas están indicadas.</p>
+                `,
+                respuestaCorrecta: false,
+                mensajeFeedback: "<strong>EVALUACIÓN APLAZADA (NO INICIAR).</strong> Existen datos confusores críticos: <strong>Temperatura central de 35.0 °C</strong> (hipotermia, debe ser >36°C) y falta documentar la eliminación de fármacos depresores del SNC (midazolam/fentanilo). El protocolo no puede iniciar bajo estas condiciones."
+            },
+            'B': {
+                titulo: "FICHA CLÍNICA B",
+                antecedentes: `
+                    <div class="mb-6 overflow-hidden rounded border border-slate-300">
+                        <table class="w-full text-base text-left">
+                            <tbody class="divide-y divide-slate-200">
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Edad / sexo:</strong> 52 años / femenino</td>
+                                    <td class="px-4 py-2"><strong>Servicio:</strong> UCI Intermedios</td>
+                                </tr>
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Ingreso a UCI:</strong> Hace 12 horas</td>
+                                    <td class="px-4 py-2"><strong>Motivo de ingreso:</strong> Depresión del sensorio, insuficiencia respiratoria aguda</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">1. Historia de la enfermedad actual</h5>
+                    <p class="mb-3 text-justify">Paciente mujer de 52 años con antecedentes de trastorno depresivo mayor. Es traída por familiares tras ser hallada inconsciente en su habitación, rodeada de frascos vacíos de psicofármacos (benzodiacepinas y antidepresivos tricíclicos).</p>
+                    <p class="text-justify">Al ingreso a urgencias cursa con depresión respiratoria severa (SatO2 75%, FR 8 rpm), requiriendo intubación endotraqueal inmediata y pase a UCI. No hay evidencia de trauma craneal, fiebre ni historia de focalización neurológica previa.</p>
+                `,
+                evolucion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">2. Evolución</h5>
+                    <p class="text-justify">En sus primeras 12 horas en UCI, se han implementado medidas de soporte vital. No se han administrado sedantes adicionales por el equipo médico. Permanece en coma arreactivo sin respuesta a ningún tipo de estímulo nociceptivo.</p>
+                `,
+                situacion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">3. Situación Actual</h5>
+                    <ul class="list-disc pl-5 mb-4 space-y-1">
+                        <li><strong>Neurológico:</strong> Glasgow 3. Ausencia total de reflejos de tronco encefálico (fotomotor, corneal, tusígeno negativos).</li>
+                        <li><strong>Hemodinámica:</strong> Estable. PA 120/70 mmHg sin vasopresores.</li>
+                        <li><strong>Térmico:</strong> Temperatura central de 36.8°C.</li>
+                    </ul>
+                `,
+                examenes: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">4. Exámenes auxiliares</h5>
+                    <div class="mb-4 text-center">
+                        <img src="CasoB.jpg" alt="Neuroimagen Caso B" class="max-h-52 mx-auto rounded shadow-md border border-slate-200 object-contain">
+                    </div>
+                    <p class="mb-2"><strong>Neuroimagen:</strong> TC inicial de cráneo sin contraste: Conservación de surcos y cisuras, no se evidencian lesiones isquémicas agudas, hemorragia, colecciones ni signos de edema cerebral. Sistema ventricular de tamaño y morfología normal. En conclusión: Neuroimagen estrictamente normal.</p>
+                    <p class="mb-2"><strong>Laboratorio:</strong> Hemoglobina 13,2 g/dL; Na 138 mmol/L; K 3,9 mmol/L; glucosa 95 mg/dL; creatinina 0,8 mg/dL; pH 7,38; PaCO2 40 mmHg; temperatura central 36,8 °C.</p>
+                    <p class="mb-2"><strong>Información farmacológica:</strong> El equipo de UCI no ha infundido fentanilo, propofol ni midazolam durante su estancia.</p>
+                    <p class="mb-4"><strong>Información toxicológica:</strong> El panel toxicológico en orina de ingreso reportó positivo para Benzodiacepinas y Antidepresivos Tricíclicos.</p>
+                `,
+                respuestaCorrecta: false,
+                mensajeFeedback: "<strong>EVALUACIÓN APLAZADA (NO INICIAR).</strong> Falla el pre-requisito más fundamental de todos: <strong>Etiología demostrada por neuroimagen de lesión estructural encefálica catastrófica</strong>. La TC es normal. Se trata de un coma tóxico-metabólico exógeno (intoxicación) potencialmente reversible."
+            },
+            'C': {
+                titulo: "FICHA CLÍNICA C",
+                antecedentes: `
+                    <div class="mb-6 overflow-hidden rounded border border-slate-300">
+                        <table class="w-full text-base text-left">
+                            <tbody class="divide-y divide-slate-200">
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Edad / sexo:</strong> 28 años / masculino</td>
+                                    <td class="px-4 py-2"><strong>Servicio:</strong> UCI Trauma</td>
+                                </tr>
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Ingreso a UCI:</strong> Hace 48 horas</td>
+                                    <td class="px-4 py-2"><strong>Motivo de ingreso:</strong> Politraumatismo severo (TEC grave + Trauma facial)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">1. Historia de la enfermedad actual</h5>
+                    <p class="mb-3 text-justify">Varón joven que sufre accidente en motocicleta a alta velocidad contra un muro de contención sin portar casco. Es intubado en la escena por el SAMU.</p>
+                    <p class="text-justify">En el servicio de urgencias presenta politraumatismo severo. Destaca un <strong>traumatismo maxilofacial destructivo masivo (fractura Le Fort III bilateral)</strong>, estallido de ambos globos oculares y fracturas de la base del cráneo, además de contusión pulmonar bilateral.</p>
+                `,
+                evolucion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">2. Evolución</h5>
+                    <p class="text-justify">A su llegada a UCI es reanimado y estabilizado hemodinámicamente. A las 24 horas de evolución presenta picos de hipertensión endocraneana refractarios a terapia osmolar, compatibles con signos de herniación cerebral y diabetes insípida. Se suspende toda sedación y analgesia, comprobándose posteriormente un adecuado aclaramiento farmacológico basado en su función renal y hepática conservadas.</p>
+                `,
+                situacion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">3. Situación Actual</h5>
+                    <ul class="list-disc pl-5 mb-4 space-y-1">
+                        <li><strong>Neurológico:</strong> Coma profundo. El estado catastrófico facial imposibilita explorar de manera anatómica y segura los reflejos pupilares, corneales y oculocefálicos. No hay respuesta motora.</li>
+                        <li><strong>Hemodinámica:</strong> PAM de 80 mmHg (sin vasopresores).</li>
+                        <li><strong>Térmico:</strong> Temperatura central de 36.6°C.</li>
+                    </ul>
+                `,
+                examenes: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">4. Exámenes auxiliares</h5>
+                    <div class="mb-4 text-center">
+                        <img src="CasoC.jpg" alt="Neuroimagen Caso C" class="max-h-52 mx-auto rounded shadow-md border border-slate-200 object-contain">
+                    </div>
+                    <p class="mb-2"><strong>Neuroimagen:</strong> TC inicial: Hemorragia subaracnoidea masiva, edema difuso severo, borramiento total de cisternas perimesencefálicas. TC control: Herniación transtentorial y amigdalina. (Lesión estructural catastrófica evidenciada).</p>
+                    <p class="mb-2"><strong>Laboratorio:</strong> Hemoglobina 10,5 g/dL; Na 142 mmol/L; K 4,5 mmol/L; glucosa 140 mg/dL; creatinina 1,1 mg/dL; pH 7,40; PaCO2 38 mmHg; temperatura central 36,6 °C.</p>
+                    <p class="mb-2"><strong>Estudios Instrumentales (Vía Alterna):</strong> Ante la imposibilidad clínica, se solicitó <strong>Ecodoppler transcraneal</strong>, el cual reporta: "Hallazgos ecográficos compatibles con paro circulatorio cerebral, caracterizados por patrones de flujo reverberante y/o espigas sistólicas aisladas de muy corta duración, sin flujo diastólico efectivo, en los vasos intracraneales evaluados. Estudio compatible con ausencia de circulación sanguínea cerebral efectiva, en el contexto clínico de sospecha de muerte encefálica."</p>
+                    <p class="mb-4"><strong>Información toxicológica:</strong> Alcoholemia ingreso negativa. Sin drogas depresoras activas.</p>
+                `,
+                respuestaCorrecta: true,
+                mensajeFeedback: "<strong>SÍ INICIAR PROTOCOLO (VÍA ALTERNA).</strong> La evaluación clínica del tronco encefálico es anatómicamente imposible debido a la destrucción ocular y maxilofacial. Sin embargo, ante una lesión estructural catastrófica demostrada y sin confusores fisiológicos, el marco normativo peruano permite certificar el diagnóstico mediante pruebas instrumentales de flujo sanguíneo (Ecodoppler transcraneal reportando hallazgos compatibles con paro circulatorio cerebral)."
+            },
+            'D': {
+                titulo: "FICHA CLÍNICA D",
+                antecedentes: `
+                    <div class="mb-6 overflow-hidden rounded border border-slate-300">
+                        <table class="w-full text-base text-left">
+                            <tbody class="divide-y divide-slate-200">
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Edad / sexo:</strong> 65 años / femenino</td>
+                                    <td class="px-4 py-2"><strong>Servicio:</strong> UCI Neurocrítica</td>
+                                </tr>
+                                <tr class="bg-blue-50">
+                                    <td class="px-4 py-2 border-r border-slate-200"><strong>Ingreso a UCI:</strong> Hace 5 días</td>
+                                    <td class="px-4 py-2"><strong>Motivo de ingreso:</strong> ECV Hemorrágico, Sepsis intrahospitalaria</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">1. Historia de la enfermedad actual</h5>
+                    <p class="mb-3 text-justify">Mujer de 65 años, diabética e hipertensa mal controlada, que debuta súbitamente con cefalea intensa, vómitos y hemiplejia derecha, progresando rápidamente al coma. Intubada en Urgencias.</p>
+                    <p class="text-justify">Neuroimagen de ingreso demostró hemorragia intraparenquimal masiva en ganglios basales izquierdos con irrupción ventricular. Evaluada por neurocirugía, se desestimó manejo quirúrgico por mal pronóstico. Al 3er día de ventilación mecánica, desarrolla cuadro de neumonía asociada a ventilador (NAV), progresando a shock séptico refractario.</p>
+                `,
+                evolucion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">2. Evolución</h5>
+                    <p class="text-justify">A pesar del manejo agresivo con antibióticos de amplio espectro y resucitación hídrica, la paciente se encuentra francamente vasopléjica, requiriendo dosis máximas de Noradrenalina y Vasopresina concomitantes. La sedación analgésica fue suspendida completamente hace 72 horas para revaluación neurológica.</p>
+                `,
+                situacion: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">3. Situación Actual</h5>
+                    <ul class="list-disc pl-5 mb-4 space-y-1">
+                        <li><strong>Neurológico:</strong> Coma arreactivo, pupilas midriáticas paralíticas.</li>
+                        <li><strong>Hemodinámica:</strong> Inestabilidad severa (Shock profundo). PAM fluctúa entre 45 y 50 mmHg a pesar del alto soporte vasoactivo.</li>
+                        <li><strong>Térmico:</strong> Temperatura central de 36.5°C.</li>
+                    </ul>
+                `,
+                examenes: `
+                    <h5 class="text-xl font-bold text-teal-800 mb-2">4. Exámenes auxiliares</h5>
+                    <div class="mb-4 text-center">
+                        <img src="CasoD.jpg" alt="Neuroimagen Caso D" class="max-h-52 mx-auto rounded shadow-md border border-slate-200 object-contain">
+                    </div>
+                    <p class="mb-2"><strong>Neuroimagen:</strong> TC cerebral: Hemorragia masiva gangliobasal izquierda, edema perilesional severo, desplazamiento de línea media y evidencia de herniación uncal. (Lesión catastrófica confirmada).</p>
+                    <p class="mb-2"><strong>Laboratorio:</strong> Hemoglobina 9,8 g/dL; Na 140 mmol/L; K 5,2 mmol/L; glucosa 160 mg/dL; creatinina 2,4 mg/dL; pH 7,15 (Acidemia severa); PaCO2 35 mmHg; Lactato sérico 6,5 mmol/L; temperatura central 36,5 °C.</p>
+                    <p class="mb-2"><strong>Información farmacológica:</strong> Sedación suspendida hace >72h (cinética de eliminación cumplida). Sin relajantes neuromusculares activos.</p>
+                    <p class="mb-4"><strong>Información toxicológica:</strong> Negativo a tóxicos exógenos.</p>
+                `,
+                respuestaCorrecta: false,
+                mensajeFeedback: "<strong>EVALUACIÓN APLAZADA (NO INICIAR).</strong> Existe una inestabilidad hemodinámica profunda <strong>(PAM < 60 mmHg)</strong> secundaria al shock séptico, sumado a una grave alteración ácido-base (pH 7.15, Lactato 6.5). Es un pre-requisito fisiológico obligatorio estabilizar la perfusión y oxigenación sistémica para evitar diagnósticos falsos positivos en el examen clínico."
+            }
+        };
+
+        let casoActual = null;
+
+        // Función para cambiar de caso clínico
+        window.seleccionarCaso = function(id) {
+            casoActual = id;
+            
+            // Ocultar bienvenida, mostrar interfaz clínica
+            document.getElementById('vista-bienvenida').classList.add('hidden');
+            document.getElementById('vista-bienvenida').classList.remove('flex');
+            
+            document.getElementById('vista-clinica').classList.remove('hidden');
+            document.getElementById('vista-clinica').classList.add('flex');
+            
+            // Actualizar título
+            document.getElementById('titulo-caso').innerText = baseDatos[id].titulo;
+            
+            // Estilizar los botones del sidebar
+            document.querySelectorAll('.caso-btn').forEach(btn => {
+                btn.classList.remove('border-teal-500', 'bg-teal-100', 'shadow-md');
+                btn.classList.add('bg-white', 'border-slate-200');
+            });
+            
+            const btnActivo = document.getElementById('btn-case-' + id);
+            btnActivo.classList.remove('bg-white', 'border-slate-200');
+            btnActivo.classList.add('border-teal-500', 'bg-teal-100', 'shadow-md');
+
+            // Abrir pestaña antecedentes por defecto
+            mostrarPestana('antecedentes');
+        };
+
+        // Función para inyectar el HTML de las pestañas
+        window.mostrarPestana = function(pestanaId) {
+            if(!casoActual) return;
+            const datos = baseDatos[casoActual];
+            const contenedor = document.getElementById('contenido-pantalla');
+            
+            // Actualizar apariencia de las pestañas superiores
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-teal-600', 'text-white', 'shadow');
+                btn.classList.add('bg-slate-100', 'text-slate-700');
+            });
+            
+            const tabActivo = document.getElementById('tab-' + pestanaId);
+            tabActivo.classList.remove('bg-slate-100', 'text-slate-700');
+            tabActivo.classList.add('bg-teal-600', 'text-white', 'shadow');
+
+            // Renderizar contenido
+            contenedor.innerHTML = datos[pestanaId];
+            
+            // Animación suave (reflow)
+            contenedor.classList.remove('fade-in');
+            void contenedor.offsetWidth;
+            contenedor.classList.add('fade-in');
+        };
+
+        // Evaluar la decisión clínica
+        window.evaluarRespuesta = function(respuestaUsuario) {
+            if(!casoActual) return;
+            const esCorrecto = (respuestaUsuario === baseDatos[casoActual].respuestaCorrecta);
+            
+            const modal = document.getElementById('modal-feedback');
+            const header = document.getElementById('modal-header');
+            const icono = document.getElementById('modal-icono');
+            const titulo = document.getElementById('modal-titulo');
+            const mensaje = document.getElementById('modal-mensaje');
+
+            if(esCorrecto) {
+                header.className = "p-4 flex items-center gap-3 bg-emerald-500 text-white";
+                icono.className = "fa-solid fa-circle-check text-3xl";
+                titulo.innerText = "¡Correcto! Excelente Juicio Clínico";
+            } else {
+                header.className = "p-4 flex items-center gap-3 bg-rose-600 text-white";
+                icono.className = "fa-solid fa-triangle-exclamation text-3xl";
+                titulo.innerText = "Decisión Incorrecta";
+            }
+
+            mensaje.innerHTML = baseDatos[casoActual].mensajeFeedback;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        // Cerrar feedback
+        window.cerrarModal = function() {
+            const modal = document.getElementById('modal-feedback');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        };
+    </script>
+</body>
+</html>
