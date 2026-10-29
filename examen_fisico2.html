@@ -140,13 +140,22 @@
             patientState = {};
             precondState = { coma: null, motora: null };
             
-            // Forzar caso fallido basado en la imagen para testing inicial
             patientState.coma = 'si';
             patientState.motora = 'si';
             
+            // Regla: Porcentaje del 33% de probabilidad de estar presente para cada reflejo
+            patientState['fotomotor'] = Math.random() < 0.33 ? 'presente' : 'ausente';
+            patientState['corneal'] = Math.random() < 0.33 ? 'presente' : 'ausente';
+            patientState['faringeo'] = Math.random() < 0.33 ? 'presente' : 'ausente';
+            patientState['tusigeno'] = Math.random() < 0.33 ? 'presente' : 'ausente';
+            
+            // Regla: Oculocefálico y Oculovestibular son positivos o negativos simultáneamente (33%)
+            const oculoState = Math.random() < 0.33 ? 'presente' : 'ausente';
+            patientState['oculocefalico'] = oculoState;
+            patientState['oculovestibular'] = oculoState;
+
             reflexesDef.forEach(r => {
                 examState[r.id] = null;
-                patientState[r.id] = Math.random() < 0.25 ? 'presente' : 'ausente';
             });
             
             document.getElementById('feedback').classList.add('hidden');
@@ -476,7 +485,7 @@
 
             setTimeout(() => {
                 drop.classList.remove('opacity-100'); drop.classList.add('opacity-0');
-                if(label) { label.classList.remove('opacity-100'); label.classList.add('opacity-0'); }
+                if(label) { label.classList.remove('opacity-0'); label.classList.add('opacity-100'); }
                 if (isPresent) {
                     if (irisL) irisL.style.transform = 'translateX(0)';
                     if (irisR) irisR.style.transform = 'translateX(0)';
